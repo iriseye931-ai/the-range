@@ -1,4 +1,4 @@
-# iriseye
+# Iriseye
 
 A local AI mesh — multiple agents sharing persistent memory, a real-time mission control dashboard, and browser automation. Runs entirely on your hardware.
 
