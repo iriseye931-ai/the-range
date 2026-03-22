@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OpenViking Memory MCP Server LaunchAgent
+  Starts the MCP wrapper on :2033 so Claude Code has memory tools across all sessions.
+
+  Install:
+    cp local.openviking-mcp.plist ~/Library/LaunchAgents/
+    # Edit paths and env vars below
+    launchctl load ~/Library/LaunchAgents/local.openviking-mcp.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.openviking-mcp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/path/to/.openviking/venv/bin/python</string>
+        <string>/path/to/iriseye/mcp/openviking-mcp-server.py</string>
+        <string>--port</string>
+        <string>2033</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OV_BASE_URL</key>
+        <string>http://127.0.0.1:1933</string>
+        <key>OV_API_KEY</key>
+        <string>your-api-key</string>
+        <key>OV_ACCOUNT</key>
+        <string>your-account</string>
+        <key>OV_USER</key>
+        <string>your-username</string>
+        <key>OV_AGENT_ID</key>
+        <string>claude</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/openviking-mcp.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/openviking-mcp.log</string>
+</dict>
+</plist>

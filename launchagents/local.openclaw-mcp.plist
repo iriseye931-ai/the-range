@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  OpenClaw Agent MCP Server LaunchAgent (optional)
+  Only needed if you have OpenClaw installed.
+  Starts the MCP wrapper on :2034 so Claude Code can delegate tasks to OpenClaw.
+
+  Install:
+    cp local.openclaw-mcp.plist ~/Library/LaunchAgents/
+    # Edit paths and env vars below
+    launchctl load ~/Library/LaunchAgents/local.openclaw-mcp.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.openclaw-mcp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/path/to/.openviking/venv/bin/python</string>
+        <string>/path/to/iriseye/mcp/openclaw-mcp-server.py</string>
+        <string>--port</string>
+        <string>2034</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OPENCLAW_BIN</key>
+        <string>/opt/homebrew/bin/openclaw</string>
+        <key>OPENCLAW_AGENT</key>
+        <string>main</string>
+        <key>OPENCLAW_TIMEOUT</key>
+        <string>120</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/openclaw-mcp.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/openclaw-mcp.log</string>
+</dict>
+</plist>

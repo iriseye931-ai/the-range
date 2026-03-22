@@ -58,26 +58,30 @@ Everything runs locally. No cloud. Your data stays on your machine.
 
 ```
 iriseye/
-├── backend/                    # FastAPI server — polls all mesh services,
-│   ├── main.py                 #   broadcasts live data via WebSocket
+├── backend/
+│   ├── main.py                       # FastAPI server — polls mesh, broadcasts via WebSocket
 │   ├── requirements.txt
 │   └── .env.example
 ├── dashboard/
-│   └── mission-control.html   # Single-file real-time dashboard (no build step)
+│   └── mission-control.html          # Single-file real-time dashboard (no build step)
 ├── mcp/
-│   ├── openviking-mcp-server.py  # MCP wrapper: exposes memory tools to Claude Code
+│   ├── openviking-mcp-server.py      # memory_recall / memory_store / memory_forget tools
+│   ├── openclaw-mcp-server.py        # ask_openclaw tool (optional, requires OpenClaw)
 │   └── requirements.txt
 ├── scripts/
-│   ├── start-mesh.sh          # Start / health-check all services
-│   ├── backup-memories.sh     # Git-commit memory snapshots (runs every 30 min)
-│   └── rebuild-index.py       # Rebuild vector index after crashes or config changes
-├── launchagents/              # macOS auto-start templates (edit paths, then load)
+│   ├── start-mesh.sh                 # Start + health-check all services
+│   ├── backup-memories.sh            # Git-commit memory snapshots every 30 min
+│   └── rebuild-index.py              # Rebuild vector index after crash or config change
+├── launchagents/                     # macOS auto-start templates (edit paths, then load)
 │   ├── local.openviking-server.plist
+│   ├── local.openviking-mcp.plist
+│   ├── local.openclaw-mcp.plist
+│   ├── local.mission-control-backend.plist
 │   └── local.memory-backup.plist
 ├── config/
-│   └── ov.conf.example        # OpenViking config template
+│   └── ov.conf.example               # OpenViking config template
 └── docs/
-    └── setup.md               # Full step-by-step setup guide
+    └── setup.md                      # Full step-by-step setup guide
 ```
 
 ---

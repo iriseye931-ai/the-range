@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mission Control Backend LaunchAgent
+  Auto-starts the FastAPI backend on :8000 at login.
+
+  Install:
+    cp local.mission-control-backend.plist ~/Library/LaunchAgents/
+    # Edit paths below
+    launchctl load ~/Library/LaunchAgents/local.mission-control-backend.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.mission-control-backend</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/path/to/iriseye/backend/venv/bin/uvicorn</string>
+        <string>main:app</string>
+        <string>--host</string>
+        <string>0.0.0.0</string>
+        <string>--port</string>
+        <string>8000</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/path/to/iriseye/backend</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OPENVIKING_URL</key>
+        <string>http://127.0.0.1:1933</string>
+        <key>OPENVIKING_KEY</key>
+        <string>your-api-key</string>
+        <key>MEMORY_MCP_URL</key>
+        <string>http://127.0.0.1:2033/mcp</string>
+        <key>AIMAESTRO_URL</key>
+        <string>http://localhost:23000</string>
+        <key>LLM_URL</key>
+        <string>http://localhost:6698/v1</string>
+        <key>AGENT_NAME</key>
+        <string>Atlas</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/mission-control-backend.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/mission-control-backend.log</string>
+</dict>
+</plist>
