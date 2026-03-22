@@ -1,0 +1,5 @@
+# Local config (has API keys)
+config/ov.conf
+
+# OS
+.DS_Store

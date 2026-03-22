@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Memory backup LaunchAgent — runs backup-memories.sh every 30 minutes.
+
+  Install:
+    cp local.memory-backup.plist ~/Library/LaunchAgents/
+    # Edit ProgramArguments path to match your install location
+    launchctl load ~/Library/LaunchAgents/local.memory-backup.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.memory-backup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/path/to/iriseye/scripts/backup-memories.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>OV_ACCOUNT</key>
+        <string>your-account</string>
+        <key>OV_USER</key>
+        <string>your-username</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/path/to/.openviking/logs/backup.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/path/to/.openviking/logs/backup.error.log</string>
+</dict>
+</plist>
