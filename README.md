@@ -11,7 +11,7 @@ A local AI mesh — multiple agents sharing persistent memory, a real-time missi
 Most local AI setups are single-agent and stateless. iriseye is a mesh:
 
 - **Multiple agents** (Claude Code, OpenClaw, Hermes, custom) coordinating on the same tasks
-- **Persistent shared memory** via [OpenViking](https://github.com/OpenViking/openviking) — a local vector database that stores what your agents learn and remember across sessions
+- **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — a local vector database that stores what your agents learn and remember across sessions
 - **Real-time dashboard** showing every agent's status, tasks, and memory activity live
 - **Browser automation** via [Page Agent](https://github.com/alibaba/page-agent) — agents can control your browser
 - **Auto-start on boot** — all services come up on login, restart on crash
@@ -57,7 +57,7 @@ Everything runs locally. No cloud. Your data stays on your machine.
 ## Prerequisites
 
 - macOS (LaunchAgents) or Linux (adapt plists to systemd units)
-- [OpenViking](https://github.com/OpenViking/openviking) installed in a Python venv
+- [OpenViking](https://github.com/volcengine/openviking) installed in a Python venv
 - [AI Maestro](https://github.com/ai-maestro/ai-maestro) for agent orchestration
 - [Claude Code](https://claude.ai/code) as the primary agent
 - A local LLM server exposing an OpenAI-compatible API (LM Studio, Ollama, vLLM, etc.)
