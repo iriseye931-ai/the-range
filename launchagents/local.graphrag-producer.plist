@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Runs graphrag-producer.py every night at 2am to collect sessions/logs/memories -->
+    <!-- Copy to ~/Library/LaunchAgents/ and run: launchctl load <this file> -->
+
+    <key>Label</key>
+    <string>local.graphrag-producer</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <!-- UPDATE: full path to graphrag-producer.py -->
+        <string>/path/to/iriseye/scripts/graphrag-producer.py</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <!-- UPDATE: path to your log dir -->
+    <string>/path/to/.graphrag/logs/producer.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/path/to/.graphrag/logs/producer.error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
