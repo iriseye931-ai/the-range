@@ -53,9 +53,11 @@ Everything runs locally. Your data stays on your machine.
 │  │  :8000     │  │   :38401    │  │  :19999  │  │  :8080    │  │
 │  └────────────┘  └─────────────┘  └──────────┘  └───────────┘  │
 │                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Local LLM  (LM Studio / Ollama)  — chat + embeddings    │   │
-│  └──────────────────────────────────────────────────────────┘   │
+│  ┌───────────────────────────────┐  ┌──────────────────────┐   │
+│  │  MLX Server (mlx_lm) :8081   │  │  Ollama :11434       │   │
+│  │  Qwen3.5-35B-A3B — chat/LLM  │  │  nomic-embed-text    │   │
+│  │  Apple Silicon MoE 4-bit     │  │  embeddings only     │   │
+│  └───────────────────────────────┘  └──────────────────────┘   │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -83,6 +85,7 @@ iriseye/
 │   ├── local.openviking-mcp.plist
 │   ├── local.openclaw-mcp.plist
 │   ├── local.mission-control-backend.plist
+│   ├── local.graphrag-producer.plist
 │   └── local.memory-backup.plist
 ├── mcp/
 │   ├── openviking-mcp-server.py      # memory_recall / memory_store / memory_forget tools
@@ -233,7 +236,9 @@ GRAPHRAG_API_KEY=local GRAPHRAG_API_BASE=http://localhost:6699/v1 \
 | Page Agent hub | 38401 | Chrome extension bridge (optional) |
 | Screenpipe | 3030 | Screen history API |
 | Netdata | 19999 | System metrics |
+| MLX Server | 8081 | Local LLM — Qwen3.5-35B-A3B-4bit via mlx_lm (chat + completions) |
 | Glance | 8080 | Service health dashboard |
+| Ollama | 11434 | Embeddings only — nomic-embed-text |
 
 ---
 
@@ -257,7 +262,7 @@ OV_API_KEY=your-key OV_ACCOUNT=your-account OV_USER=$(whoami) \
 - [ ] Web UI for memory browser / management
 - [ ] Multi-machine mesh (agents on different hosts, shared memory store)
 - [ ] GraphRAG query interface in the dashboard
-- [ ] Agent-to-agent messaging with signatures (AMP protocol)
+- [x] Agent-to-agent messaging with signatures (AMP protocol)
 - [ ] Dashboard alerts + notification routing
 
 ---
