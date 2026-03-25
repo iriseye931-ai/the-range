@@ -80,7 +80,10 @@ iriseye/
 │   └── mission-control.html          # Single-file real-time dashboard (no build step)
 ├── docs/
 │   └── setup.md                      # Full step-by-step setup guide
+├── hooks/
+│   └── auto-store-worker.sh          # Claude Code Stop hook — auto-stores session summaries to memory
 ├── launchagents/                     # macOS auto-start templates (edit paths, then load)
+│   ├── local.mlx-server.plist        # MLX LLM server (Apple Silicon)
 │   ├── local.openviking-server.plist
 │   ├── local.openviking-mcp.plist
 │   ├── local.openclaw-mcp.plist
@@ -92,6 +95,7 @@ iriseye/
 │   ├── openclaw-mcp-server.py        # ask_openclaw tool (optional, requires OpenClaw)
 │   └── requirements.txt
 └── scripts/
+    ├── mlx-server                    # MLX LLM server startup script (Apple Silicon)
     ├── start-mesh.sh                 # Start + health-check all services
     ├── backup-memories.sh            # Git-commit memory snapshots every 30 min
     ├── rebuild-index.py              # Rebuild vector index after crash or config change

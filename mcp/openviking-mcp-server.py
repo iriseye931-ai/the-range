@@ -23,6 +23,7 @@ Environment variables:
 import argparse
 import asyncio
 import os
+import threading
 import httpx
 from mcp.server.fastmcp import FastMCP
 
@@ -32,7 +33,7 @@ ACCOUNT   = os.getenv("OV_ACCOUNT",   "default")
 USER      = os.getenv("OV_USER",      os.getenv("USER", "user"))
 AGENT_ID  = os.getenv("OV_AGENT_ID",  "claude")
 TIMEOUT   = float(os.getenv("OV_TIMEOUT", "30"))
-EXTRACT_TIMEOUT = float(os.getenv("OV_EXTRACT_TIMEOUT", "120"))
+EXTRACT_TIMEOUT = float(os.getenv("OV_EXTRACT_TIMEOUT", "900"))
 
 
 def _headers(agent_id: str | None = None) -> dict:
@@ -157,20 +158,32 @@ def create_server(host: str = "127.0.0.1", port: int = 2033) -> FastMCP:
                 json={"role": "assistant", "content": "Understood. I have noted this information."},
             )
 
-        async def _extract_and_cleanup(sid: str, agent: str) -> None:
-            try:
-                async with httpx.AsyncClient(timeout=EXTRACT_TIMEOUT) as bg:
-                    await bg.post(f"{BASE_URL}/api/v1/sessions/{sid}/extract",
-                                  headers=_headers(agent), json={})
-            except Exception:
-                pass
-            try:
-                async with httpx.AsyncClient(timeout=TIMEOUT) as bg:
-                    await bg.delete(f"{BASE_URL}/api/v1/sessions/{sid}", headers=_headers(agent))
-            except Exception:
-                pass
+        # Fire-and-forget extract + cleanup in a background thread.
+        # asyncio.ensure_future is unreliable with stateless_http FastMCP —
+        # tasks get cancelled when the HTTP handler returns. A daemon thread
+        # with its own event loop is immune to that problem.
+        def _extract_thread(sid: str, agent: str) -> None:
+            async def _run() -> None:
+                try:
+                    async with httpx.AsyncClient(timeout=EXTRACT_TIMEOUT) as bg:
+                        await bg.post(f"{BASE_URL}/api/v1/sessions/{sid}/extract",
+                                      headers=_headers(agent), json={})
+                except Exception:
+                    pass
+                try:
+                    async with httpx.AsyncClient(timeout=TIMEOUT) as bg:
+                        await bg.delete(f"{BASE_URL}/api/v1/sessions/{sid}",
+                                        headers=_headers(agent))
+                except Exception:
+                    pass
 
-        asyncio.ensure_future(_extract_and_cleanup(session_id, aid))
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(_run())
+            finally:
+                loop.close()
+
+        threading.Thread(target=_extract_thread, args=(session_id, aid), daemon=True).start()
         return f"Stored (session {session_id}). Extraction running in background (~60-120s)."
 
     @mcp.tool()

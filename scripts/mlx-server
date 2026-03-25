@@ -1,0 +1,28 @@
+#!/bin/bash
+# MLX LLM Server — OpenAI-compatible API via mlx_lm
+# Runs on Apple Silicon (M-series chips only).
+#
+# Setup:
+#   python3 -m venv ~/.mlx/venv
+#   source ~/.mlx/venv/bin/activate
+#   pip install mlx-lm
+#   mlx_lm.convert --hf-path Qwen/Qwen3.5-35B-A3B --mlx-path ~/.mlx/models/Qwen3.5-35B-A3B-4bit -q
+#
+# Then edit MLX_MODEL below and run this script, or load the launchagent.
+
+MODEL="${MLX_MODEL:-/Users/YOUR_USERNAME/.mlx/models/Qwen3.5-35B-A3B-4bit}"
+PORT="${MLX_PORT:-8081}"
+HOST="${MLX_HOST:-0.0.0.0}"
+
+source "$HOME/.mlx/venv/bin/activate"
+
+echo "[mlx-server] Starting $MODEL on $HOST:$PORT"
+exec python -m mlx_lm.server \
+    --model "$MODEL" \
+    --host "$HOST" \
+    --port "$PORT" \
+    --prompt-cache-bytes 1073741824 \
+    --max-tokens 16384 \
+    --chat-template-args '{"enable_thinking":false}' \
+    --decode-concurrency 1 \
+    --prompt-concurrency 1
