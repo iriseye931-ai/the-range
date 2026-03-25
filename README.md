@@ -14,7 +14,7 @@ Most local AI setups are single-agent and stateless. iriseye is a mesh:
 - **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store
 - **Self-building knowledge graph** — sessions, logs, and memories get indexed nightly into GraphRAG
 - **250+ prompt patterns** via fabric wired to your local LLM — summarize, extract, analyze, with zero API calls
-- **Real-time dashboard** showing every agent's status, tasks, and memory activity live
+- **Real-time dashboard** showing every agent's status, tasks, and memory activity live — [mission-control-dashboard](https://github.com/iriseye931-ai/mission-control-dashboard)
 - **Full observability** — Netdata for system metrics, Glance for service health, Screenpipe for visual history
 - **Auto-start on boot** — all services come up on login, restart on crash
 - **30-minute memory snapshots** — git-based backup so nothing is lost
