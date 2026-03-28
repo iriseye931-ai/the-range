@@ -25,6 +25,48 @@ Everything runs locally. Your data stays on your machine.
 
 ## Architecture
 
+The mesh runs three protocols — each doing what it's best at.
+
+**MCP** — tools the model calls *while thinking*. Memory lookups, file ops, agent delegation — synchronous and inline. The model gets the result mid-thought.
+
+**CLI** — direct subprocess call to an agent. Blocking, immediate, zero infrastructure. `hermes chat -q`, `openclaw agent -m` — your script calls an agent like any other command.
+
+**AMP** — async message passing between agents via file-based inbox, routed by AI Maestro. Fire and forget. Agents talk to each other without you in the middle.
+
+They layer like this:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Atlas (Claude Code)                  │
+│                                                          │
+│   MCP (inline, mid-thought)    AMP / CLI (delegation)   │
+│   ├── memory_recall :2033      ├── amp-send → hermes     │
+│   ├── memory_store  :2033      ├── amp-send → iriseye    │
+│   └── ask_openclaw  :2034      └── direct CLI if needed  │
+└─────────────────────────────────────────────────────────┘
+         │                              │
+         ▼                              ▼
+  OpenViking :1933              AI Maestro :23000
+  (shared memory)               (AMP routing)
+                                       │
+                            ┌──────────┴──────────┐
+                            ▼                     ▼
+                     hermes bridge         iriseye bridge
+                            │                     │
+                   ┌────────┴──┐         ┌────────┴────────┐
+                   ▼           ▼         ▼                 ▼
+              MLX direct  hermes CLI  MLX direct    openclaw CLI
+              (~1-2s)     (tools)     (~1-2s)       (tools)
+```
+
+**Smart routing inside each bridge** — every AMP message is routed by type:
+- `type=task` → full agent CLI (browser, terminal, file ops)
+- everything else → MLX direct (~1-2s, local inference, **$0 cost**)
+
+This is the pattern the industry is converging on. Most setups pick one protocol and force everything through it. We use all three at the layer they're best at — MCP for inline tools, CLI for direct agent calls, AMP for async agent-to-agent communication.
+
+Full architecture writeup: **[docs/mesh-architecture.md](docs/mesh-architecture.md)**
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                          Your Machine                            │
@@ -45,7 +87,7 @@ Everything runs locally. Your data stays on your machine.
 │                                    │                             │
 │  ┌─────────────────────────────────▼──────────────────────────┐ │
 │  │               Mission Control Dashboard                    │ │
-│  │         real-time status · memory · cron jobs              │ │
+│  │         real-time status · memory · AMP inbox · cron jobs  │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────┐  ┌─────────────┐  ┌──────────┐  ┌───────────┐  │
@@ -79,9 +121,11 @@ iriseye/
 ├── dashboard/
 │   └── mission-control.html          # Single-file real-time dashboard (no build step)
 ├── docs/
-│   └── setup.md                      # Full step-by-step setup guide
+│   ├── setup.md                      # Full step-by-step setup guide
+│   └── mesh-architecture.md          # MCP vs CLI vs AMP — how the protocols layer
 ├── hooks/
-│   └── auto-store-worker.sh          # Claude Code Stop hook — auto-stores session summaries to memory
+│   ├── auto-store-worker.sh          # Claude Code Stop hook — auto-stores session summaries to memory
+│   └── subconscious-worker.sh        # Session summarization via MLX → OpenViking
 ├── launchagents/                     # macOS auto-start templates (edit paths, then load)
 │   ├── local.mlx-server.plist        # MLX LLM server (Apple Silicon)
 │   ├── local.openviking-server.plist
@@ -89,7 +133,9 @@ iriseye/
 │   ├── local.openclaw-mcp.plist
 │   ├── local.mission-control-backend.plist
 │   ├── local.graphrag-producer.plist
-│   └── local.memory-backup.plist
+│   ├── local.memory-backup.plist
+│   ├── local.amp-hermes-bridge.plist # AMP bridge daemon for Hermes
+│   └── local.amp-iriseye-bridge.plist # AMP bridge daemon for iriseye
 ├── mcp/
 │   ├── openviking-mcp-server.py      # memory_recall / memory_store / memory_forget tools
 │   ├── openclaw-mcp-server.py        # ask_openclaw tool (optional, requires OpenClaw)
@@ -100,7 +146,9 @@ iriseye/
     ├── backup-memories.sh            # Git-commit memory snapshots every 30 min
     ├── rebuild-index.py              # Rebuild vector index after crash or config change
     ├── graphrag-producer.py          # Collect sessions/logs/memories for nightly indexing
-    └── llm-proxy.py                  # Rate-limiting proxy — prevents LLM queue flooding
+    ├── llm-proxy.py                  # Rate-limiting proxy — prevents LLM queue flooding
+    ├── amp-hermes-bridge.sh          # AMP → Hermes bridge (smart routing: task→CLI, else→MLX)
+    └── amp-iriseye-bridge.sh         # AMP → iriseye bridge (same routing pattern)
 ```
 
 ---
