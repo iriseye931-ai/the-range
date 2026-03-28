@@ -5,6 +5,32 @@ each doing what it's best at, none replacing the others.
 
 ---
 
+## The Cost Model First
+
+This mesh runs on a **$20/month Claude Code (Max) subscription** plus local hardware.
+That's it. No per-token API bills, no usage spikes, no surprise charges.
+
+Here's how that works in practice:
+
+| What | Cost | Why |
+|------|------|-----|
+| Claude Code (Max) | $20/mo | Lead agent — reasoning, code, architecture, complex decisions |
+| MLX inference (Qwen3.5 35B) | $0 | Handles ~90% of mesh traffic locally |
+| Hermes agent | $0 | Runs locally, uses local model config |
+| iriseye / OpenClaw | $0 | Local agent, no external calls |
+| OpenViking memory | $0 | Self-hosted vector store |
+
+The key insight: **Claude's context is never wasted on work the local LLM can handle.**
+Routine mesh messages — notifications, status updates, quick routing decisions — go
+to MLX direct at ~1-2s with zero subscription cost. Only tasks that genuinely need
+Claude's reasoning quality hit the $20/mo subscription.
+
+This is why the smart routing pattern matters: it's not just about latency, it's about
+preserving Claude's context and subscription capacity for the work that actually needs it.
+With this setup, you don't run out of tokens. The local LLM absorbs the volume.
+
+---
+
 ## The Three Protocols
 
 ### MCP — Model Context Protocol
@@ -114,16 +140,22 @@ subprocess, returns output, exits. But:
 | Path | Latency | Cost |
 |------|---------|------|
 | MLX direct (Qwen3.5 35B local) | ~1-2s | $0 — local inference |
-| `claude -p` headless | 5-15s + API latency | burns Anthropic subscription |
-| hermes/openclaw CLI (tool tasks) | ~7s | depends on agent model config |
+| Claude Code (Atlas, lead agent) | interactive | $20/mo flat — Max subscription |
+| `claude -p` headless subprocess | 5-15s + API latency | counts against Max subscription |
+| hermes/openclaw CLI (tool tasks) | ~7s | $0 — local model config |
 
-For general mesh messaging — status updates, routing decisions, short responses —
-MLX quality is sufficient and the cost is zero. Routing every AMP message through
-`claude -p` would consume subscription tokens at scale with no quality benefit for
-that use case.
+**Atlas (Claude Code) is the lead agent and is worth every dollar of the $20/mo.**
+Complex reasoning, architecture decisions, code generation, nuanced judgment —
+Claude handles this better than any local model available today. The subscription
+pays for itself in the quality gap on tasks that actually need it.
 
-`claude -p` makes sense only when you specifically need Claude's reasoning quality
-for a task the local model can't handle well. It's not a default route.
+The smart routing pattern exists specifically to *protect* that subscription:
+route the high-volume, simple traffic to MLX so Claude's capacity is never
+wasted on work a local model can do just as well.
+
+`claude -p` as a subprocess would work but defeats the purpose — it spawns
+a full Claude instance for every delegated task, consuming subscription capacity
+on things MLX handles fine. Don't use it as a default mesh route.
 
 ---
 

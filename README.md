@@ -1,6 +1,6 @@
 # iriseye
 
-A local AI mesh — multiple specialized agents sharing persistent memory, a self-building knowledge graph, and real-time monitoring. Runs entirely on your hardware. No cloud. No API bills.
+A local AI mesh — multiple specialized agents sharing persistent memory, a self-building knowledge graph, and real-time monitoring. Built on a $20/month Claude Code subscription plus local LLMs that handle the bulk of the work for free.
 
 > **Active development.** We're shipping updates regularly. PRs and issues welcome.
 
@@ -10,14 +10,28 @@ A local AI mesh — multiple specialized agents sharing persistent memory, a sel
 
 Most local AI setups are single-agent and stateless. iriseye is a mesh:
 
-- **Three agents** coordinating on the same tasks — Atlas (Claude Code), Hermes, iriseye (OpenClaw)
-- **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store
+- **Claude Code ($20/mo)** as the lead agent (Atlas) — handles reasoning, architecture, code, complex decisions. The subscription that makes everything else possible.
+- **Local LLM (MLX, free)** handles high-volume mesh traffic — notifications, summaries, routing, quick responses. Runs on your hardware, zero per-token cost.
+- **Hermes + iriseye (OpenClaw)** — specialized agents for long-running tasks, file ops, web research. Offload work so Claude's context stays focused on what matters.
+- **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store. Claude remembers everything across sessions.
+- **Smart token management** — routine mesh messages never touch Claude. Only tasks that need real reasoning hit the subscription. You don't run out.
 - **Self-building knowledge graph** — sessions, logs, and memories get indexed nightly into GraphRAG
 - **250+ prompt patterns** via fabric wired to your local LLM — summarize, extract, analyze, with zero API calls
-- **Real-time dashboard** showing every agent's status, tasks, and memory activity live — [mission-control-dashboard](https://github.com/iriseye931-ai/mission-control-dashboard)
+- **Real-time dashboard** showing every agent's status, tasks, AMP inbox, and memory activity live — [mission-control-dashboard](https://github.com/iriseye931-ai/mission-control-dashboard)
 - **Full observability** — Netdata for system metrics, Glance for service health, Screenpipe for visual history
 - **Auto-start on boot** — all services come up on login, restart on crash
 - **30-minute memory snapshots** — git-based backup so nothing is lost
+
+### The cost model
+
+| Layer | Cost | What it handles |
+|-------|------|-----------------|
+| Claude Code (Max) | $20/mo flat | Lead agent reasoning, code, architecture, complex tasks |
+| MLX local inference | $0 | Mesh routing, notifications, summaries, quick responses |
+| Hermes / OpenClaw | $0 | Tool-requiring tasks — browser, terminal, file ops |
+| OpenViking memory | $0 | Persistent memory across all agents |
+
+One flat subscription. Everything else runs locally. The mesh is designed so Claude's context is never wasted on work the local LLM can do.
 
 Everything runs locally. Your data stays on your machine.
 
