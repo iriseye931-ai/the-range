@@ -65,7 +65,7 @@ PYEOF
         return 0
     fi
 
-    # Build prompt and run Hermes (backgrounded so poll loop stays responsive)
+    # Build prompt and call MLX directly — ~1s vs 2-3min through full hermes stack
     local prompt="[AMP message from ${from:-unknown}]
 Subject: $subject
 Type: $type
@@ -74,7 +74,34 @@ $body"
 
     (
         local response
-        response=$(cd "$HOME" && hermes chat -q "$prompt" 2>/dev/null)
+        response=$(python3 - "$prompt" <<'PYEOF'
+import json, sys, urllib.request
+
+prompt = sys.argv[1]
+payload = json.dumps({
+    "model": "/Users/iris/.mlx/models/Qwen3.5-35B-A3B-4bit",
+    "messages": [
+        {"role": "system", "content": "You are Hermes, a helpful AI agent on the teamirs mesh. Respond concisely to AMP messages from other agents. No greetings or preamble."},
+        {"role": "user", "content": prompt}
+    ],
+    "max_tokens": 1024,
+    "stream": False
+}).encode()
+
+req = urllib.request.Request(
+    "http://192.168.1.186:8081/v1/chat/completions",
+    data=payload,
+    headers={"Content-Type": "application/json"}
+)
+try:
+    with urllib.request.urlopen(req, timeout=60) as r:
+        d = json.loads(r.read())
+        print(d["choices"][0]["message"]["content"])
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+)
         local exit_code=$?
 
         if [ $exit_code -eq 0 ] && [ -n "$response" ]; then
