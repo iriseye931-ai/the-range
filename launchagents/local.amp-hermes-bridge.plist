@@ -14,7 +14,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/iris/.local/bin</string>
+        <string>/Users/iris/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/iris/.local/bin</string>
         <key>HOME</key>
         <string>/Users/iris</string>
         <key>CLAUDE_AGENT_NAME</key>
@@ -24,7 +24,7 @@
     <key>StandardOutPath</key>
     <string>/Users/iris/.agent-messaging/agents/hermes/bridge.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/iris/.agent-messaging/agents/hermes/bridge.log</string>
+    <string>/Users/iris/.agent-messaging/agents/hermes/bridge-err.log</string>
 
     <key>RunAtLoad</key>
     <true/>

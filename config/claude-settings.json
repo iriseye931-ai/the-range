@@ -6,11 +6,12 @@
   "hooks": {
     "PostToolUse": [
       {
+        "matcher": "Write|Edit|Agent|WebFetch|WebSearch|mcp__",
         "hooks": [
           {
             "type": "command",
             "command": "/Users/iris/.claude/hooks/observe.sh",
-            "timeout": 3
+            "timeout": 4
           }
         ]
       }
