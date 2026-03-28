@@ -1,9 +1,10 @@
 #!/bin/bash
 # =============================================================================
-# AMP → Hermes Bridge
+# AMP → Hermes Bridge  (smart routing)
 # =============================================================================
-# Watches Hermes's AMP inbox and processes messages via hermes chat -q.
-# Replies back via AMP to the original sender.
+# Watches Hermes's AMP inbox and routes messages:
+#   type=task  → hermes chat -q  (full agent with tools: browser, terminal, etc.)
+#   everything → MLX direct      (~7s round-trip, no tool overhead)
 #
 # Run as a daemon (LaunchAgent: local.amp-hermes-bridge)
 # =============================================================================
@@ -12,7 +13,9 @@ export CLAUDE_AGENT_NAME="hermes"
 INBOX="$HOME/.agent-messaging/agents/hermes/messages/inbox"
 PROCESSED="$HOME/.agent-messaging/agents/hermes/messages/processed"
 LOG="$HOME/.agent-messaging/agents/hermes/bridge.log"
-POLL_INTERVAL=5  # seconds
+MLX_URL="http://192.168.1.186:8081/v1/chat/completions"
+MLX_MODEL="/Users/iris/.mlx/models/Qwen3.5-35B-A3B-4bit"
+POLL_INTERVAL=5
 
 mkdir -p "$INBOX" "$PROCESSED"
 
@@ -20,16 +23,54 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 
 log "AMP-Hermes bridge started (PID $$)"
 
+# ---------------------------------------------------------------------------
+# respond_mlx: fast path — direct MLX inference, no tools (~1-2s)
+# ---------------------------------------------------------------------------
+respond_mlx() {
+    local prompt="$1"
+    python3 - "$prompt" "$MLX_URL" "$MLX_MODEL" <<'PYEOF'
+import json, sys, urllib.request
+prompt, url, model = sys.argv[1], sys.argv[2], sys.argv[3]
+payload = json.dumps({
+    "model": model,
+    "messages": [
+        {"role": "system", "content": "You are Hermes, an AI agent on the teamirs mesh. Respond concisely and directly. No greetings or preamble."},
+        {"role": "user", "content": prompt}
+    ],
+    "max_tokens": 1024,
+    "stream": False
+}).encode()
+req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+try:
+    with urllib.request.urlopen(req, timeout=90) as r:
+        print(json.loads(r.read())["choices"][0]["message"]["content"])
+except Exception as e:
+    print(f"MLX error: {e}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+}
+
+# ---------------------------------------------------------------------------
+# respond_hermes: tool path — full hermes agent (browser, terminal, file ops)
+# ---------------------------------------------------------------------------
+respond_hermes() {
+    local prompt="$1"
+    cd "$HOME" && hermes chat -q "$prompt" 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
+# process_message: claim, parse, route, reply
+# ---------------------------------------------------------------------------
 process_message() {
     local msg_file="$1"
     local msg_id
     msg_id=$(basename "$msg_file" .json)
 
-    # Atomic claim: rename first to prevent double-processing on restart
+    # Atomic claim — prevents double-processing on restart
     local claimed="$PROCESSED/${msg_id}.json"
-    mv "$msg_file" "$claimed" 2>/dev/null || return 0  # already claimed by another instance
+    mv "$msg_file" "$claimed" 2>/dev/null || return 0
 
-    # Parse all fields in one python call — pass filename as arg (no shell injection)
+    # Parse all fields in one python call (filename via sys.argv — no injection)
     local parsed
     parsed=$(python3 - "$claimed" <<'PYEOF'
 import json, sys
@@ -45,86 +86,63 @@ try:
         'body':      pay.get('message', '')
     }))
 except Exception as e:
-    print('ERROR: ' + str(e), file=sys.stderr)
-    print('{}')
+    print('{}', file=sys.stdout)
+    print(f'parse error: {e}', file=sys.stderr)
 PYEOF
 )
 
-    local from subject thread_id type body
-    from=$(      echo "$parsed" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('from',''))"      2>/dev/null)
-    subject=$(   echo "$parsed" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('subject',''))"   2>/dev/null)
+    local from subject thread_id msg_type body
+    from=$(      echo "$parsed" | python3 -c "import sys,json;d=json.loads(sys.stdin.read());print(d.get('from',''))"      2>/dev/null)
+    subject=$(   echo "$parsed" | python3 -c "import sys,json;d=json.loads(sys.stdin.read());print(d.get('subject',''))"   2>/dev/null)
     local thread_id
-    thread_id=$( echo "$parsed" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('thread_id',''))" 2>/dev/null)
-    type=$(      echo "$parsed" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('type',''))"      2>/dev/null)
-    body=$(      echo "$parsed" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('body',''))"      2>/dev/null)
-
-    log "Processing $msg_id from=${from:-unknown} subject='$subject' type=$type"
+    thread_id=$( echo "$parsed" | python3 -c "import sys,json;d=json.loads(sys.stdin.read());print(d.get('thread_id',''))" 2>/dev/null)
+    msg_type=$(  echo "$parsed" | python3 -c "import sys,json;d=json.loads(sys.stdin.read());print(d.get('type',''))"      2>/dev/null)
+    body=$(      echo "$parsed" | python3 -c "import sys,json;d=json.loads(sys.stdin.read());print(d.get('body',''))"      2>/dev/null)
 
     if [ -z "$body" ]; then
-        log "Empty body in $msg_id — skipping"
+        log "[$msg_id] empty body — skipping"
         return 0
     fi
 
-    # Build prompt and call MLX directly — ~1s vs 2-3min through full hermes stack
-    local prompt="[AMP message from ${from:-unknown}]
-Subject: $subject
-Type: $type
+    # Route decision
+    local route="mlx"
+    [ "$msg_type" = "task" ] && route="hermes"
+
+    log "[$msg_id] from=${from:-unknown} type=$msg_type route=$route subject='$subject'"
+
+    local prompt="[AMP from ${from:-unknown}] Subject: $subject | Type: $msg_type
 
 $body"
 
     (
-        local response
-        response=$(python3 - "$prompt" <<'PYEOF'
-import json, sys, urllib.request
-
-prompt = sys.argv[1]
-payload = json.dumps({
-    "model": "/Users/iris/.mlx/models/Qwen3.5-35B-A3B-4bit",
-    "messages": [
-        {"role": "system", "content": "You are Hermes, a helpful AI agent on the teamirs mesh. Respond concisely to AMP messages from other agents. No greetings or preamble."},
-        {"role": "user", "content": prompt}
-    ],
-    "max_tokens": 1024,
-    "stream": False
-}).encode()
-
-req = urllib.request.Request(
-    "http://192.168.1.186:8081/v1/chat/completions",
-    data=payload,
-    headers={"Content-Type": "application/json"}
-)
-try:
-    with urllib.request.urlopen(req, timeout=60) as r:
-        d = json.loads(r.read())
-        print(d["choices"][0]["message"]["content"])
-except Exception as e:
-    print(f"ERROR: {e}", file=sys.stderr)
-    sys.exit(1)
-PYEOF
-)
-        local exit_code=$?
+        local response exit_code
+        if [ "$route" = "hermes" ]; then
+            response=$(respond_hermes "$prompt")
+            exit_code=$?
+        else
+            response=$(respond_mlx "$prompt")
+            exit_code=$?
+        fi
 
         if [ $exit_code -eq 0 ] && [ -n "$response" ]; then
-            log "Hermes responded to $msg_id (${#response} chars)"
+            log "[$msg_id] responded via $route (${#response} chars)"
 
             if [ -n "$from" ]; then
                 local sender_addr="${from%%@*}"
-                # Safely build context JSON
                 local ctx
                 ctx=$(python3 -c "
-import json, sys
-print(json.dumps({'thread_id': sys.argv[1], 'reply_to_amp': sys.argv[2]}))" \
-                    "$thread_id" "$msg_id" 2>/dev/null) || ctx='{}'
+import json,sys; print(json.dumps({'thread_id':sys.argv[1],'reply_to_amp':sys.argv[2],'route':sys.argv[3]}))" \
+                    "$thread_id" "$msg_id" "$route" 2>/dev/null) || ctx='{}'
 
                 amp-send "$sender_addr" "Re: $subject" "$response" \
                     --type response \
                     --context "$ctx" \
                     >> "$LOG" 2>&1 \
-                    && log "Reply sent to $from" \
-                    || log "Failed to send reply to $from"
+                    && log "[$msg_id] reply sent to $from" \
+                    || log "[$msg_id] reply failed to $from"
             fi
         else
-            log "Hermes no response for $msg_id (exit=$exit_code)"
+            log "[$msg_id] no response from $route (exit=$exit_code)"
         fi
     ) &
 }
