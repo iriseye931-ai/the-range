@@ -1,6 +1,27 @@
-# iriseye
+<p align="center">
+  <img src="assets/logo.svg" alt="iriseye" width="400"/>
+</p>
 
-A local AI mesh — multiple specialized agents sharing persistent memory, a self-building knowledge graph, and real-time monitoring. Built on a $20/month Claude Code subscription plus local LLMs that handle the bulk of the work for free.
+<p align="center">
+  <strong>A fully local, multi-agent AI mesh running 24/7 on Apple Silicon.</strong><br/>
+  Five specialized agents. Shared persistent memory. Real-time monitoring.<br/>
+  Built on a <strong>$20/month Claude Code subscription</strong> — and local LLMs that handle everything else for free.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Claude_Code-Max_$20%2Fmo-8b5cf6?style=flat-square&logo=anthropic&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Local_LLM-Qwen3.5_35B-10b981?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Protocol-MCP_%7C_CLI_%7C_AMP-6366f1?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Platform-Apple_Silicon-000000?style=flat-square&logo=apple&logoColor=white"/>
+  <img src="https://img.shields.io/badge/License-MIT-334155?style=flat-square"/>
+</p>
+
+---
+
+> Most people use Claude for one conversation at a time.
+> We built a mesh where Claude is the lead brain, local LLMs handle the volume,
+> and five agents coordinate on the same memory — all day, every day, on hardware you own.
+> One flat subscription. No token anxiety. No API bills.
 
 > **Active development.** We're shipping updates regularly. PRs and issues welcome.
 
