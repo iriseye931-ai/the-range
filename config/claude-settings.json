@@ -1,0 +1,86 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash -c 'exec /opt/homebrew/bin/node /Users/iris/Projects/claude-hud/dist/index.js'"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/iris/.claude/hooks/observe.sh",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/iris/.claude/hooks/pre-write-scan.sh",
+            "timeout": 8
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt|permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/iris/.claude/hooks/auto-recall.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "/Users/iris/.claude/hooks/auto-store.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=/Users/iris/superpowers /Users/iris/superpowers/hooks/session-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
