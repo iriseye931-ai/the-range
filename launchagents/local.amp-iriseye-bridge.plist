@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.amp-iriseye-bridge</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/iris/.local/bin/amp-iriseye-bridge.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/iris/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/iris/.local/bin</string>
+        <key>HOME</key>
+        <string>/Users/iris</string>
+        <key>CLAUDE_AGENT_NAME</key>
+        <string>iriseye</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/iris/.agent-messaging/agents/iriseye/bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/iris/.agent-messaging/agents/iriseye/bridge-err.log</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>

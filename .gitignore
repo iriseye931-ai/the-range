@@ -3,3 +3,4 @@ config/ov.conf
 
 # OS
 .DS_Store
+.worktrees/
