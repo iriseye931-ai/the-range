@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-json:
+    name: Validate JSON configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check claude-settings.json
+        run: jq empty config/claude-settings.json
+      - name: Check hooks reference files that exist
+        run: |
+          python3 - <<'EOF'
+          import json, sys, pathlib
+
+          settings = json.load(open("config/claude-settings.json"))
+          errors = []
+
+          def check_hooks(hooks_dict):
+              for event, entries in hooks_dict.items():
+                  for entry in entries:
+                      for hook in entry.get("hooks", []):
+                          if hook.get("type") != "command":
+                              continue
+                          cmd = hook.get("command", "")
+                          # Extract first token that looks like a file path
+                          for token in cmd.split():
+                              if token.startswith("/") and token.endswith(".sh"):
+                                  # Strip env var prefix if present (e.g. FOO=bar /path/to/script.sh)
+                                  path = token.lstrip()
+                                  # Can't check absolute paths on CI — just verify the basename
+                                  # exists somewhere in the repo
+                                  name = pathlib.Path(path).name
+                                  matches = list(pathlib.Path(".").rglob(name))
+                                  if not matches:
+                                      errors.append(f"{event}: references '{name}' but it's not in the repo")
+                                  break
+
+          check_hooks(settings.get("hooks", {}))
+
+          if errors:
+              print("Hook reference errors:")
+              for e in errors:
+                  print(f"  ERROR: {e}")
+              sys.exit(1)
+          else:
+              print("All hook references look clean.")
+          EOF
+
+  shellcheck:
+    name: Lint shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run shellcheck on hooks
+        run: shellcheck --severity=error hooks/*.sh
+      - name: Run shellcheck on scripts
+        run: shellcheck --severity=error scripts/*.sh
+
+  check-links:
+    name: Check README links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: yes
+          config-file: .github/mlc-config.json
