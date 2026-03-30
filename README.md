@@ -4,12 +4,13 @@
 
 <p align="center">
   <strong>A fully local, multi-agent AI mesh running 24/7 on Apple Silicon.</strong><br/>
-  Five specialized agents. Shared persistent memory. Real-time monitoring.<br/>
+  Specialized agents. Shared persistent memory. Real-time monitoring.<br/>
   Built on a <strong>$20/month Claude Code subscription</strong> — and local LLMs that handle everything else for free.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Max_$20%2Fmo-8b5cf6?style=flat-square&logo=anthropic&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Hermes-NousResearch-10b981?style=flat-square"/>
   <img src="https://img.shields.io/badge/Local_LLM-Qwen3.5_35B-10b981?style=flat-square"/>
   <img src="https://img.shields.io/badge/Protocol-MCP_%7C_CLI_%7C_AMP-6366f1?style=flat-square"/>
   <img src="https://img.shields.io/badge/Platform-Apple_Silicon-000000?style=flat-square&logo=apple&logoColor=white"/>
@@ -20,7 +21,7 @@
 
 > Most people use Claude for one conversation at a time.
 > We built a mesh where Claude is the lead brain, local LLMs handle the volume,
-> and five agents coordinate on the same memory — all day, every day, on hardware you own.
+> and agents coordinate on the same memory — all day, every day, on hardware you own.
 > One flat subscription. No token anxiety. No API bills.
 
 > **Active development.** We're shipping updates regularly. PRs and issues welcome.
@@ -33,7 +34,7 @@ Most local AI setups are single-agent and stateless. iriseye is a mesh:
 
 - **Claude Code ($20/mo)** as the lead agent (Atlas) — handles reasoning, architecture, code, complex decisions. The subscription that makes everything else possible.
 - **Local LLM (MLX, free)** handles high-volume mesh traffic — notifications, summaries, routing, quick responses. Runs on your hardware, zero per-token cost.
-- **Hermes + iriseye (OpenClaw)** — specialized agents for long-running tasks, file ops, web research. Offload work so Claude's context stays focused on what matters.
+- **[Hermes](https://github.com/NousResearch/hermes-agent) (@NousResearch)** — specialized agent for long-running tasks, file ops, web research, tool-chaining. Replaces all cloud-based secondary agents. Routes via AMP: `type=task` gets full agent with tools, everything else gets direct MLX (~1-2s).
 - **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store. Claude remembers everything across sessions.
 - **Smart token management** — routine mesh messages never touch Claude. Only tasks that need real reasoning hit the subscription. You don't run out.
 - **Self-building knowledge graph** — sessions, logs, and memories get indexed nightly into GraphRAG
@@ -42,6 +43,7 @@ Most local AI setups are single-agent and stateless. iriseye is a mesh:
 - **Full observability** — Netdata for system metrics, Glance for service health, Screenpipe for visual history
 - **Auto-start on boot** — all services come up on login, restart on crash
 - **30-minute memory snapshots** — git-based backup so nothing is lost
+- **Config safety net** — every settings/hook change reviewed by local MLX via `config-review.sh`. Issues routed to Hermes via AMP. No Claude API tokens burned on routine checks.
 
 ### The cost model
 
@@ -49,7 +51,7 @@ Most local AI setups are single-agent and stateless. iriseye is a mesh:
 |-------|------|-----------------|
 | Claude Code (Max) | $20/mo flat | Lead agent reasoning, code, architecture, complex tasks |
 | MLX local inference | $0 | Mesh routing, notifications, summaries, quick responses |
-| Hermes / OpenClaw | $0 | Tool-requiring tasks — browser, terminal, file ops |
+| Hermes (NousResearch) | $0 | Tool-requiring tasks — browser, terminal, file ops, web research |
 | OpenViking memory | $0 | Persistent memory across all agents |
 
 One flat subscription. Everything else runs locally. The mesh is designed so Claude's context is never wasted on work the local LLM can do.
@@ -64,7 +66,7 @@ The mesh runs three protocols — each doing what it's best at.
 
 **MCP** — tools the model calls *while thinking*. Memory lookups, file ops, agent delegation — synchronous and inline. The model gets the result mid-thought.
 
-**CLI** — direct subprocess call to an agent. Blocking, immediate, zero infrastructure. `hermes chat -q`, `openclaw agent -m` — your script calls an agent like any other command.
+**CLI** — direct subprocess call to an agent. Blocking, immediate, zero infrastructure. `hermes chat -q` — your script calls an agent like any other command.
 
 **AMP** — async message passing between agents via file-based inbox, routed by AI Maestro. Fire and forget. Agents talk to each other without you in the middle.
 
@@ -76,29 +78,29 @@ They layer like this:
 │                                                          │
 │   MCP (inline, mid-thought)    AMP / CLI (delegation)   │
 │   ├── memory_recall :2033      ├── amp-send → hermes     │
-│   ├── memory_store  :2033      ├── amp-send → iriseye    │
-│   └── ask_openclaw  :2034      └── direct CLI if needed  │
+│   ├── memory_store  :2033      └── direct CLI if needed  │
+│   └── chub_search (docs)                                 │
 └─────────────────────────────────────────────────────────┘
          │                              │
          ▼                              ▼
   OpenViking :1933              AI Maestro :23000
   (shared memory)               (AMP routing)
                                        │
-                            ┌──────────┴──────────┐
-                            ▼                     ▼
-                     hermes bridge         iriseye bridge
-                            │                     │
-                   ┌────────┴──┐         ┌────────┴────────┐
-                   ▼           ▼         ▼                 ▼
-              MLX direct  hermes CLI  MLX direct    openclaw CLI
-              (~1-2s)     (tools)     (~1-2s)       (tools)
+                                       ▼
+                               hermes bridge
+                                       │
+                          ┌────────────┴───────────┐
+                          ▼                        ▼
+                     MLX direct            hermes chat -q
+                     (~1-2s)               (tools, sessions)
+                  type=notification        type=task
 ```
 
-**Smart routing inside each bridge** — every AMP message is routed by type:
-- `type=task` → full agent CLI (browser, terminal, file ops)
+**Smart routing inside the bridge** — every AMP message is routed by type:
+- `type=task` → `hermes chat -q` (full agent: browser, terminal, file ops, web research)
 - everything else → MLX direct (~1-2s, local inference, **$0 cost**)
-
-This is the pattern the industry is converging on. Most setups pick one protocol and force everything through it. We use all three at the layer they're best at — MCP for inline tools, CLI for direct agent calls, AMP for async agent-to-agent communication.
+- max 2 concurrent Hermes workers — prevents MLX queue flooding
+- session resumption via `-c "amp-bridge"` — warm startup, no context reload cost
 
 Full architecture writeup: **[docs/mesh-architecture.md](docs/mesh-architecture.md)**
 
@@ -106,24 +108,24 @@ Full architecture writeup: **[docs/mesh-architecture.md](docs/mesh-architecture.
 ┌──────────────────────────────────────────────────────────────────┐
 │                          Your Machine                            │
 │                                                                  │
-│  ┌───────────────┐   ┌──────────────┐   ┌──────────────────┐   │
-│  │  Claude Code  │   │    Hermes    │   │  iriseye         │   │
-│  │  (Atlas)      │   │  (NousRes.)  │   │  (OpenClaw)      │   │
-│  │  lead agent   │   │  long tasks  │   │  file/web ops    │   │
-│  └──────┬────────┘   └──────┬───────┘   └────────┬─────────┘   │
-│         │                   │                     │             │
-│         └───────────────────┴─────────────────────┘             │
-│                                    │                             │
-│                          ┌─────────▼──────────┐                 │
-│                          │    OpenViking       │                 │
-│                          │  shared memory      │                 │
-│                          │  localhost:1933     │                 │
-│                          └─────────┬──────────┘                 │
-│                                    │                             │
-│  ┌─────────────────────────────────▼──────────────────────────┐ │
-│  │               Mission Control Dashboard                    │ │
-│  │         real-time status · memory · AMP inbox · cron jobs  │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│  ┌───────────────┐   ┌──────────────────────────────────────┐   │
+│  │  Claude Code  │   │    Hermes (NousResearch)             │   │
+│  │  (Atlas)      │   │  long-running tasks · web research   │   │
+│  │  lead agent   │   │  file ops · tool chaining · cron     │   │
+│  └──────┬────────┘   └──────────────────────────────────────┘   │
+│         │                             │                          │
+│         └─────────────────────────────┘                          │
+│                          │                                       │
+│                ┌─────────▼──────────┐                            │
+│                │    OpenViking       │                            │
+│                │  shared memory      │                            │
+│                │  localhost:1933     │                            │
+│                └─────────┬──────────┘                            │
+│                          │                                       │
+│  ┌───────────────────────▼────────────────────────────────────┐  │
+│  │               Mission Control Dashboard                    │  │
+│  │         real-time status · memory · AMP inbox · cron jobs  │  │
+│  └────────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  ┌────────────┐  ┌─────────────┐  ┌──────────┐  ┌───────────┐  │
 │  │  FastAPI   │  │  Page Agent │  │ Netdata  │  │  Glance   │  │
@@ -152,6 +154,7 @@ iriseye/
 │   ├── requirements.txt
 │   └── .env.example
 ├── config/
+│   ├── claude-settings.json          # Claude Code settings (hooks, autoDreamEnabled: false)
 │   └── ov.conf.example               # OpenViking config template
 ├── dashboard/
 │   └── mission-control.html          # Single-file real-time dashboard (no build step)
@@ -160,30 +163,27 @@ iriseye/
 │   └── mesh-architecture.md          # MCP vs CLI vs AMP — how the protocols layer
 ├── hooks/
 │   ├── auto-store-worker.sh          # Claude Code Stop hook — auto-stores session summaries to memory
+│   ├── config-review.sh              # PostToolUse hook — reviews config changes via local MLX, alerts Hermes on issues
 │   └── subconscious-worker.sh        # Session summarization via MLX → OpenViking
 ├── launchagents/                     # macOS auto-start templates (edit paths, then load)
 │   ├── local.mlx-server.plist        # MLX LLM server (Apple Silicon)
 │   ├── local.openviking-server.plist
 │   ├── local.openviking-mcp.plist
-│   ├── local.openclaw-mcp.plist
 │   ├── local.mission-control-backend.plist
 │   ├── local.graphrag-producer.plist
 │   ├── local.memory-backup.plist
-│   ├── local.amp-hermes-bridge.plist # AMP bridge daemon for Hermes
-│   └── local.amp-iriseye-bridge.plist # AMP bridge daemon for iriseye
+│   └── local.amp-hermes-bridge.plist # AMP bridge daemon for Hermes
 ├── mcp/
 │   ├── openviking-mcp-server.py      # memory_recall / memory_store / memory_forget tools
-│   ├── openclaw-mcp-server.py        # ask_openclaw tool (optional, requires OpenClaw)
 │   └── requirements.txt
 └── scripts/
-    ├── mlx-server                    # MLX LLM server startup script (Apple Silicon)
+    ├── mlx-server                    # MLX LLM server startup script (4GB KV cache, concurrency 2)
+    ├── amp-hermes-bridge.sh          # AMP → Hermes bridge (parallel workers, session resumption)
     ├── start-mesh.sh                 # Start + health-check all services
     ├── backup-memories.sh            # Git-commit memory snapshots every 30 min
     ├── rebuild-index.py              # Rebuild vector index after crash or config change
     ├── graphrag-producer.py          # Collect sessions/logs/memories for nightly indexing
-    ├── llm-proxy.py                  # Rate-limiting proxy — prevents LLM queue flooding
-    ├── amp-hermes-bridge.sh          # AMP → Hermes bridge (smart routing: task→CLI, else→MLX)
-    └── amp-iriseye-bridge.sh         # AMP → iriseye bridge (same routing pattern)
+    └── llm-proxy.py                  # Rate-limiting proxy — prevents LLM queue flooding
 ```
 
 ---
@@ -214,14 +214,23 @@ uvicorn.run(create_app(), host='0.0.0.0', port=1933)
 OV_API_KEY=your-key python mcp/openviking-mcp-server.py &
 claude mcp add --transport http --scope user openviking-memory http://127.0.0.1:2033/mcp
 
-# 4. Start the dashboard backend
+# 4. Install Hermes (NousResearch)
+curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+# Configure to use your local MLX endpoint
+
+# 5. Start the AMP bridge (routes messages to Hermes)
+cp scripts/amp-hermes-bridge.sh ~/.local/bin/amp-hermes-bridge.sh
+chmod +x ~/.local/bin/amp-hermes-bridge.sh
+# Load launchagents/local.amp-hermes-bridge.plist
+
+# 6. Start the dashboard backend
 cd backend && pip install -r requirements.txt
 cp .env.example .env && uvicorn main:app --port 8000
 
-# 5. Open the dashboard
+# 7. Open the dashboard
 open dashboard/mission-control.html
 
-# 6. Check everything
+# 8. Check everything
 ./scripts/start-mesh.sh
 ```
 
@@ -231,13 +240,19 @@ open dashboard/mission-control.html
 
 **[Claude Code](https://claude.ai/code)** (Atlas) — the lead agent. Writes code, makes decisions, orchestrates the other agents. Gets full memory tools via MCP.
 
-**[Hermes](https://github.com/NousResearch/hermes-agent)** — handles long-running tasks and cron-scheduled automations. Delivers results to Telegram/Discord/Slack. Its job state feeds directly into the dashboard.
+**[Hermes](https://github.com/NousResearch/hermes-agent)** (@NousResearch) — handles long-running tasks, cron-scheduled automations, web research, file ops. Purpose-built for Hermes-format tool calling, which is what Qwen and most local models use. Delivers results back via AMP. Replaced OpenClaw entirely — Hermes handles tool-call parsing correctly where OpenClaw failed on local models.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
 ```
 
-**[OpenClaw](https://openclaw.dev)** (iriseye) — a local agent with file, web, and shell tools. Handles research and file ops in the background while Atlas focuses on reasoning.
+Key commands:
+```bash
+hermes chat -q "your task"              # one-shot task
+hermes chat -c "session-name" -q "..."  # resume named session (warm startup)
+hermes doctor --fix                     # health check + auto-fix
+hermes claw migrate                     # migrate from OpenClaw
+```
 
 **[Page Agent](https://github.com/alibaba/page-agent)** — browser automation. Agents can navigate pages, extract data, fill forms.
 
@@ -316,8 +331,7 @@ GRAPHRAG_API_KEY=local GRAPHRAG_API_BASE=http://localhost:6699/v1 \
 |---------|------|---------|
 | OpenViking | 1933 | Vector memory server |
 | Memory MCP | 2033 | MCP tools for Claude Code (memory_recall, memory_store, memory_forget) |
-| OpenClaw MCP | 2034 | ask_openclaw tool (optional) |
-| OpenClaw Gateway | 18789 | OpenClaw agent gateway (optional) |
+| Hermes Gateway | 18789 | Hermes messaging gateway (Telegram, Discord) |
 | AI Maestro | 23000 | Multi-agent orchestration (optional) |
 | Mission Control backend | 8000 | Dashboard WebSocket + REST API |
 | Page Agent hub | 38401 | Chrome extension bridge (optional) |
@@ -350,6 +364,8 @@ OV_API_KEY=your-key OV_ACCOUNT=your-account OV_USER=$(whoami) \
 - [ ] Multi-machine mesh (agents on different hosts, shared memory store)
 - [ ] GraphRAG query interface in the dashboard
 - [x] Agent-to-agent messaging with signatures (AMP protocol)
+- [x] Hermes (NousResearch) as primary local agent — full tool-call support on local models
+- [x] Config safety net — MLX-reviewed hook/settings changes, zero Claude API cost
 - [ ] Dashboard alerts + notification routing
 
 ---
@@ -357,6 +373,8 @@ OV_API_KEY=your-key OV_ACCOUNT=your-account OV_USER=$(whoami) \
 ## Contributing
 
 Issues and PRs welcome. If you build something with this, open a discussion — we want to see it.
+
+Built with [Hermes](https://github.com/NousResearch/hermes-agent) by @NousResearch — the agent that actually handles tool calling correctly on local models.
 
 ---
 

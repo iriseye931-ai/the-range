@@ -1,4 +1,5 @@
 {
+  "autoDreamEnabled": false,
   "statusLine": {
     "type": "command",
     "command": "bash -c 'exec /opt/homebrew/bin/node /Users/iris/Projects/claude-hud/dist/index.js'"
@@ -12,6 +13,16 @@
             "type": "command",
             "command": "/Users/iris/.claude/hooks/observe.sh",
             "timeout": 4
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/iris/.claude/hooks/config-review.sh",
+            "timeout": 6
           }
         ]
       }
@@ -36,17 +47,6 @@
             "type": "command",
             "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
             "timeout": 5
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/iris/.claude/hooks/auto-recall.sh",
-            "timeout": 15
           }
         ]
       }

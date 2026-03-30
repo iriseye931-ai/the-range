@@ -10,18 +10,41 @@
 # =============================================================================
 
 export CLAUDE_AGENT_NAME="hermes"
-INBOX="$HOME/.agent-messaging/agents/hermes/messages/inbox"
-PROCESSED="$HOME/.agent-messaging/agents/hermes/messages/processed"
-LOG="$HOME/.agent-messaging/agents/hermes/bridge.log"
+HERMES_UUID="eb1bb81e-78e0-4130-847d-8cb24c3ba5d3"
+AGENT_DIR="$HOME/.agent-messaging/agents/$HERMES_UUID"
+INBOX="$AGENT_DIR/messages/inbox"
+PROCESSED="$AGENT_DIR/messages/processed"
+LOG="$AGENT_DIR/bridge.log"
 MLX_URL="http://192.168.1.186:8081/v1/chat/completions"
 MLX_MODEL="/Users/iris/.mlx/models/Qwen3.5-35B-A3B-4bit"
 POLL_INTERVAL=5
 
-mkdir -p "$INBOX" "$PROCESSED"
+# Parallel worker cap — prevents MLX queue flooding
+MAX_WORKERS=2
+WORKERS_DIR="$AGENT_DIR/workers"
+
+mkdir -p "$INBOX" "$PROCESSED" "$WORKERS_DIR"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG"; }
 
 log "AMP-Hermes bridge started (PID $$)"
+
+# ---------------------------------------------------------------------------
+# Worker pool — lockfile-based semaphore, max MAX_WORKERS concurrent tasks
+# ---------------------------------------------------------------------------
+cleanup_workers() {
+    for lockfile in "$WORKERS_DIR"/*.lock; do
+        [ -f "$lockfile" ] || continue
+        local pid
+        pid=$(cat "$lockfile" 2>/dev/null)
+        [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || rm -f "$lockfile"
+    done
+}
+
+active_workers() {
+    cleanup_workers
+    ls "$WORKERS_DIR"/*.lock 2>/dev/null | wc -l | tr -d ' '
+}
 
 # ---------------------------------------------------------------------------
 # respond_mlx: fast path — direct MLX inference, no tools (~1-2s)
@@ -52,10 +75,11 @@ PYEOF
 
 # ---------------------------------------------------------------------------
 # respond_hermes: tool path — full hermes agent (browser, terminal, file ops)
+# Resume named session for warm startup — skips re-loading system prompt each call
 # ---------------------------------------------------------------------------
 respond_hermes() {
     local prompt="$1"
-    cd "$HOME" && hermes chat -q "$prompt" 2>/dev/null
+    cd "$HOME" && hermes chat -c "amp-bridge" -q "$prompt" 2>/dev/null
 }
 
 # ---------------------------------------------------------------------------
@@ -66,7 +90,12 @@ process_message() {
     local msg_id
     msg_id=$(basename "$msg_file" .json)
 
+    # Check worker capacity before claiming (type=task only — MLX tasks are fast, don't cap them)
+    # We'll check after parsing, but pre-check for hermes tasks to avoid unnecessary mv
+    # (full check happens after we know the type)
+
     # Atomic claim — prevents double-processing on restart
+    mkdir -p "$PROCESSED"
     local claimed="$PROCESSED/${msg_id}.json"
     mv "$msg_file" "$claimed" 2>/dev/null || return 0
 
@@ -108,6 +137,13 @@ PYEOF
     local route="mlx"
     [ "$msg_type" = "task" ] && route="hermes"
 
+    # Worker cap — defer hermes tasks if at capacity (put back in inbox)
+    if [ "$route" = "hermes" ] && [ "$(active_workers)" -ge "$MAX_WORKERS" ]; then
+        log "[$msg_id] worker pool full ($MAX_WORKERS active), deferring"
+        mv "$claimed" "$msg_file" 2>/dev/null
+        return 0
+    fi
+
     log "[$msg_id] from=${from:-unknown} type=$msg_type route=$route subject='$subject'"
 
     local prompt="[AMP from ${from:-unknown}] Subject: $subject | Type: $msg_type
@@ -115,6 +151,10 @@ PYEOF
 $body"
 
     (
+        # Register this worker
+        local lockfile="$WORKERS_DIR/${msg_id}.lock"
+        echo $$ > "$lockfile"
+
         local response exit_code
         if [ "$route" = "hermes" ]; then
             response=$(respond_hermes "$prompt")
@@ -123,6 +163,8 @@ $body"
             response=$(respond_mlx "$prompt")
             exit_code=$?
         fi
+
+        rm -f "$lockfile"
 
         if [ $exit_code -eq 0 ] && [ -n "$response" ]; then
             log "[$msg_id] responded via $route (${#response} chars)"
@@ -147,9 +189,15 @@ import json,sys; print(json.dumps({'thread_id':sys.argv[1],'reply_to_amp':sys.ar
     ) &
 }
 
-# Main polling loop
+# Main polling loop — scan both flat inbox and sender subdirectories
 while true; do
+    # Flat: legacy messages directly in inbox/
     for msg_file in "$INBOX"/*.json; do
+        [ -f "$msg_file" ] || continue
+        process_message "$msg_file"
+    done
+    # Subdirs: messages organized by sender (e.g. inbox/claude_teamirs_aimaestro_local/*.json)
+    for msg_file in "$INBOX"/*/*.json; do
         [ -f "$msg_file" ] || continue
         process_message "$msg_file"
     done
