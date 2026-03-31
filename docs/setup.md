@@ -186,18 +186,16 @@ The dashboard reads `~/.hermes/cron/jobs.json` — no extra config needed.
 
 ---
 
-## Step 8 — Add OpenClaw (optional second agent)
+## Step 8 — Add Hermes (optional second agent)
 
-If you have [OpenClaw](https://openclaw.dev) installed:
+If you have [Hermes](https://github.com/NousResearch/hermes-agent) installed:
 
 ```bash
-cp ~/iriseye/launchagents/local.openclaw-mcp.plist ~/Library/LaunchAgents/
-# Edit: set OPENCLAW_BIN to your openclaw binary path
-nano ~/Library/LaunchAgents/local.openclaw-mcp.plist
-launchctl load ~/Library/LaunchAgents/local.openclaw-mcp.plist
+cp ~/iriseye/launchagents/local.hermes-mcp.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/local.hermes-mcp.plist
 
 # Register with Claude Code
-claude mcp add --transport http --scope user openclaw-agent http://127.0.0.1:2034/mcp
+claude mcp add --transport stdio --scope user hermes -- hermes mcp serve
 ```
 
 ---
