@@ -40,7 +40,7 @@ Most local AI setups are single-agent and stateless. iriseye is a mesh:
   - `code-specialist` — `Qwen2.5-Coder-32B-Instruct-4bit`
   - `reasoning-specialist` — `DeepSeek-R1-Distill-Qwen-32B-4bit`
 - **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store.
-- **Mission Control is the operational source of truth** — health, routing, heartbeats, premium availability, cron freshness, and local profile state are visible live.
+- **Mission Control is the operational source of truth** — health, routing, heartbeats, premium availability, cron freshness, local profile state, permission decisions, and normalized agent presence are visible live.
 - **AI Maestro is the registry/orchestration layer** — useful for addresses and AMP routing, but not treated as the primary liveness authority.
 - **Smart token management** — routine mesh messages never touch the premium pool. Most work stays local.
 - **Self-building knowledge graph** — sessions, logs, and memories get indexed nightly into GraphRAG
@@ -87,6 +87,12 @@ The mesh runs three protocols and one control-plane policy.
 - `routine -> hermes`
 - `specialized -> iriseye`
 - `premium -> atlas`, fallback `claude`
+
+Recent control-plane improvements:
+
+- **Permission audit trail** — Hermes and Mission Control can emit allow/deny/ask/bypass events into one shared audit stream.
+- **Presence-aware mesh state** — the dashboard distinguishes agents that are `online`, merely `registered`, and truly `offline`.
+- **Operator-visible decisions** — routing, profile starts/stops, and control-plane overrides now leave an inspectable paper trail.
 
 They layer like this:
 
