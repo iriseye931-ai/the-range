@@ -5,13 +5,14 @@
 <p align="center">
   <strong>A fully local, multi-agent AI mesh running 24/7 on Apple Silicon.</strong><br/>
   Specialized agents. Shared persistent memory. Real-time monitoring.<br/>
-  Built on a <strong>$20/month Claude Code subscription</strong> — and local LLMs that handle everything else for free.
+  Local-first routing. Premium reasoning by exception. Real observability.<br/>
+  Premium pool: Claude Code plus Codex when needed. Local stack handles the volume.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Claude_Code-Max_$20%2Fmo-8b5cf6?style=flat-square&logo=anthropic&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Atlas-Premium_Role-06b6d4?style=flat-square"/>
   <img src="https://img.shields.io/badge/Hermes-NousResearch-10b981?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Local_LLM-Qwen3.5_35B-10b981?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Local_LLM-Qwen3.5_35B_%7C_Qwen2.5_Coder_%7C_DeepSeek_R1-10b981?style=flat-square"/>
   <img src="https://img.shields.io/badge/Protocol-MCP_%7C_CLI_%7C_AMP-6366f1?style=flat-square"/>
   <img src="https://img.shields.io/badge/Platform-Apple_Silicon-000000?style=flat-square&logo=apple&logoColor=white"/>
   <img src="https://img.shields.io/badge/License-MIT-334155?style=flat-square"/>
@@ -19,10 +20,9 @@
 
 ---
 
-> Most people use Claude for one conversation at a time.
-> We built a mesh where Claude is the lead brain, local LLMs handle the volume,
-> and agents coordinate on the same memory — all day, every day, on hardware you own.
-> One flat subscription. No token anxiety. No API bills.
+> Most local AI setups are either one smart premium model or one isolated local model.
+> iriseye is both: a local-first mesh where Hermes absorbs the volume, Mission Control
+> tells the truth about the system, and premium reasoning is reserved for the hard edge cases.
 
 > **Active development.** We're shipping updates regularly. PRs and issues welcome.
 
@@ -32,11 +32,17 @@
 
 Most local AI setups are single-agent and stateless. iriseye is a mesh:
 
-- **Claude Code ($20/mo)** as the lead agent (Atlas) — handles reasoning, architecture, code, complex decisions. The subscription that makes everything else possible.
-- **Local LLM (MLX, free)** handles high-volume mesh traffic — notifications, summaries, routing, quick responses. Runs on your hardware, zero per-token cost.
-- **[Hermes](https://github.com/NousResearch/hermes-agent) (@NousResearch)** — specialized agent for long-running tasks, file ops, web research, tool-chaining. Replaces all cloud-based secondary agents. Routes via AMP: `type=task` gets full agent with tools, everything else gets direct MLX (~1-2s).
-- **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store. Claude remembers everything across sessions.
-- **Smart token management** — routine mesh messages never touch Claude. Only tasks that need real reasoning hit the subscription. You don't run out.
+- **Atlas is a role, not a model** — the lead path can be served by Claude Code or Codex. Premium reasoning is reserved for planning, ambiguous debugging, tricky refactors, and final review.
+- **[Hermes](https://github.com/NousResearch/hermes-agent) (@NousResearch)** is the workhorse — cron, summaries, routing, memory consolidation, repo scans, and routine execution stay local by default.
+- **Hermes runs as a profile stack, not one monolith**:
+  - `workhorse` — `Qwen3.5-35B-A3B-4bit`
+  - `sidecar` — `Qwen2.5-7B-Instruct-4bit`
+  - `code-specialist` — `Qwen2.5-Coder-32B-Instruct-4bit`
+  - `reasoning-specialist` — `DeepSeek-R1-Distill-Qwen-32B-4bit`
+- **Persistent shared memory** via [OpenViking](https://github.com/volcengine/openviking) — every agent reads and writes to the same vector store.
+- **Mission Control is the operational source of truth** — health, routing, heartbeats, premium availability, cron freshness, and local profile state are visible live.
+- **AI Maestro is the registry/orchestration layer** — useful for addresses and AMP routing, but not treated as the primary liveness authority.
+- **Smart token management** — routine mesh messages never touch the premium pool. Most work stays local.
 - **Self-building knowledge graph** — sessions, logs, and memories get indexed nightly into GraphRAG
 - **250+ prompt patterns** via fabric wired to your local LLM — summarize, extract, analyze, with zero API calls
 - **Real-time dashboard** showing every agent's status, tasks, AMP inbox, and memory activity live — [mission-control-dashboard](https://github.com/iriseye931-ai/mission-control-dashboard)
@@ -49,12 +55,18 @@ Most local AI setups are single-agent and stateless. iriseye is a mesh:
 
 | Layer | Cost | What it handles |
 |-------|------|-----------------|
-| Claude Code (Max) | $20/mo flat | Lead agent reasoning, code, architecture, complex tasks |
-| MLX local inference | $0 | Mesh routing, notifications, summaries, quick responses |
-| Hermes (NousResearch) | $0 | Tool-requiring tasks — browser, terminal, file ops, web research |
+| Premium pool (Claude Code / Codex) | scarce | Lead-agent judgment, planning, review, high-stakes work |
+| MLX local inference | $0 | Hermes workhorse, sidecar, coding specialist, reasoning specialist |
+| Hermes (NousResearch) | $0 | Local execution, cron, tooling, summaries, routing, file/web tasks |
 | OpenViking memory | $0 | Persistent memory across all agents |
 
-One flat subscription. Everything else runs locally. The mesh is designed so Claude's context is never wasted on work the local LLM can do.
+The important constraint is not "use the smartest model first." It is "use the cheapest model that can do the job correctly, and reserve premium reasoning for the tasks that actually justify it."
+
+In practice:
+
+- Hermes should handle most mesh traffic.
+- Codex and Claude Code should be used as scarce premium paths.
+- If one premium path is capped or unavailable, the other takes over the Atlas role.
 
 Everything runs locally. Your data stays on your machine.
 
@@ -62,7 +74,7 @@ Everything runs locally. Your data stays on your machine.
 
 ## Architecture
 
-The mesh runs three protocols — each doing what it's best at.
+The mesh runs three protocols and one control-plane policy.
 
 **MCP** — tools the model calls *while thinking*. Memory lookups, file ops, agent delegation — synchronous and inline. The model gets the result mid-thought.
 
@@ -70,37 +82,47 @@ The mesh runs three protocols — each doing what it's best at.
 
 **AMP** — async message passing between agents via file-based inbox, routed by AI Maestro. Fire and forget. Agents talk to each other without you in the middle.
 
+**Routing policy** — local first, premium by exception:
+
+- `routine -> hermes`
+- `specialized -> iriseye`
+- `premium -> atlas`, fallback `claude`
+
 They layer like this:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Atlas (Claude Code)                  │
-│                                                          │
-│   MCP (inline, mid-thought)    AMP / CLI (delegation)   │
-│   ├── memory_recall :2033      ├── amp-send → hermes     │
-│   ├── memory_store  :2033      └── direct CLI if needed  │
-│   └── chub_search (docs)                                 │
-└─────────────────────────────────────────────────────────┘
-         │                              │
-         ▼                              ▼
-  OpenViking :1933              AI Maestro :23000
-  (shared memory)               (AMP routing)
-                                       │
-                                       ▼
-                               hermes bridge
-                                       │
-                          ┌────────────┴───────────┐
-                          ▼                        ▼
-                     MLX direct            hermes chat -q
-                     (~1-2s)               (tools, sessions)
-                  type=notification        type=task
+┌────────────────────────────────────────────────────────────┐
+│                 Atlas (premium lead role)                 │
+│            served by Codex or Claude Code                 │
+│                                                            │
+│   MCP (inline tools)          AMP / CLI (delegation)      │
+│   ├── memory_recall :2033     ├── amp-send → hermes       │
+│   ├── memory_store  :2033     ├── amp-send → iriseye      │
+│   └── docs / file tools       └── direct CLI if blocking  │
+└────────────────────────────────────────────────────────────┘
+         │                                 │
+         ▼                                 ▼
+  OpenViking :1933                 AI Maestro :23000
+  shared memory                    registry + AMP routing
+         │                                 │
+         └──────────────┬──────────────────┘
+                        ▼
+               Mission Control :8000 / :3000
+               operational truth + routing
+                        │
+          ┌─────────────┴────────────────────────┐
+          ▼                                      ▼
+    Hermes local stack                         iriseye
+    workhorse / sidecar /                      specialized file/web
+    code-specialist / reasoning-specialist
 ```
 
-**Smart routing inside the bridge** — every AMP message is routed by type:
-- `type=task` → `hermes chat -q` (full agent: browser, terminal, file ops, web research)
-- everything else → MLX direct (~1-2s, local inference, **$0 cost**)
-- max 2 concurrent Hermes workers — prevents MLX queue flooding
-- session resumption via `-c "amp-bridge"` — warm startup, no context reload cost
+**Hermes profile stack**
+
+- `workhorse` handles default local execution
+- `sidecar` handles summaries, routing, compression, and cheap helper work
+- `code-specialist` is loaded on demand for implementation-heavy tasks
+- `reasoning-specialist` is loaded on demand for harder local analysis before premium escalation
 
 Full architecture writeup: **[docs/mesh-architecture.md](docs/mesh-architecture.md)**
 
@@ -157,7 +179,7 @@ iriseye/
 │   ├── claude-settings.json          # Claude Code settings (hooks, autoDreamEnabled: false)
 │   └── ov.conf.example               # OpenViking config template
 ├── dashboard/
-│   └── mission-control.html          # Single-file real-time dashboard (no build step)
+│   └── mission-control.html          # legacy single-file dashboard snapshot
 ├── docs/
 │   ├── setup.md                      # Full step-by-step setup guide
 │   └── mesh-architecture.md          # MCP vs CLI vs AMP — how the protocols layer
@@ -210,7 +232,7 @@ import uvicorn; from openviking.server import create_app
 uvicorn.run(create_app(), host='0.0.0.0', port=1933)
 " &
 
-# 3. Start the memory MCP server (gives Claude Code memory tools)
+# 3. Start the memory MCP server (gives Atlas memory tools)
 OV_API_KEY=your-key python mcp/openviking-mcp-server.py &
 claude mcp add --transport http --scope user openviking-memory http://127.0.0.1:2033/mcp
 
@@ -225,22 +247,33 @@ chmod +x ~/.local/bin/amp-hermes-bridge.sh
 
 # 6. Start the dashboard backend
 cd backend && pip install -r requirements.txt
-cp .env.example .env && uvicorn main:app --port 8000
+cp .env.example .env && ./run_mission_control.sh
 
-# 7. Open the dashboard
-open dashboard/mission-control.html
+# 7. Run the live Mission Control frontend
+# Use the dedicated mission-control-dashboard repo for the current UI on :3000
+open http://127.0.0.1:3000
 
 # 8. Check everything
 ./scripts/start-mesh.sh
 ```
 
+The `dashboard/mission-control.html` file in this repo is retained as a lightweight legacy snapshot.
+The live operational UI is the separate [mission-control-dashboard](https://github.com/iriseye931-ai/mission-control-dashboard) repo.
+
 ---
 
 ## Agent ecosystem
 
-**[Claude Code](https://claude.ai/code)** (Atlas) — the lead agent. Writes code, makes decisions, orchestrates the other agents. Gets full memory tools via MCP.
+**Atlas** — the lead role in the mesh. In practice this can be served by **[Claude Code](https://claude.ai/code)** or **Codex** depending on availability. Atlas handles planning, architecture, high-stakes debugging, and final review. It gets full memory tools via MCP.
 
-**[Hermes](https://github.com/NousResearch/hermes-agent)** (@NousResearch) — handles long-running tasks, cron-scheduled automations, web research, file ops. Purpose-built for Hermes-format tool calling, which is what Qwen and most local models use. Delivers results back via AMP. Replaced OpenClaw entirely — Hermes handles tool-call parsing correctly where OpenClaw failed on local models.
+**[Hermes](https://github.com/NousResearch/hermes-agent)** (@NousResearch) — handles long-running tasks, cron-scheduled automations, web research, file ops, and most routine execution. Hermes is backed by a local profile stack:
+
+- `workhorse` — `Qwen3.5-35B-A3B-4bit`
+- `sidecar` — `Qwen2.5-7B-Instruct-4bit`
+- `code-specialist` — `Qwen2.5-Coder-32B-Instruct-4bit`
+- `reasoning-specialist` — `DeepSeek-R1-Distill-Qwen-32B-4bit`
+
+That means Hermes is not just "the local model." It is the local execution layer.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
@@ -293,7 +326,7 @@ All tools are configured to use your local LLM — no external API calls.
 The mesh gets smarter every day automatically:
 
 ```
-Claude sessions ──┐
+Atlas sessions ───┐
 Hermes logs ──────┤──► graphrag-producer.py (2am) ──► ~/.graphrag/workspace/input/
 OpenViking memory ┤                                           │
 Shell history ────┘                                          ▼
@@ -330,14 +363,18 @@ GRAPHRAG_API_KEY=local GRAPHRAG_API_BASE=http://localhost:6699/v1 \
 | Service | Port | Purpose |
 |---------|------|---------|
 | OpenViking | 1933 | Vector memory server |
-| Memory MCP | 2033 | MCP tools for Claude Code (memory_recall, memory_store, memory_forget) |
+| Memory MCP | 2033 | MCP tools for Atlas (memory_recall, memory_store, memory_forget) |
 | Hermes Gateway | 18789 | Hermes messaging gateway (Telegram, Discord) |
 | AI Maestro | 23000 | Multi-agent orchestration (optional) |
 | Mission Control backend | 8000 | Dashboard WebSocket + REST API |
+| Mission Control frontend | 3000 | Dashboard UI |
 | Page Agent hub | 38401 | Chrome extension bridge (optional) |
 | Screenpipe | 3030 | Screen history API |
 | Netdata | 19999 | System metrics |
 | MLX Server | 8081 | Local LLM — Qwen3.5-35B-A3B-4bit via mlx_lm (chat + completions) |
+| Hermes sidecar | 8083 | Qwen2.5-7B-Instruct-4bit |
+| Hermes code-specialist | 8084 | Qwen2.5-Coder-32B-Instruct-4bit |
+| Hermes reasoning-specialist | 8085 | DeepSeek-R1-Distill-Qwen-32B-4bit |
 | Glance | 8080 | Service health dashboard |
 | Ollama | 11434 | Embeddings only — nomic-embed-text |
 
