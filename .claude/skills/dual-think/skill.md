@@ -20,7 +20,7 @@ Two different models, different architectures, different blind spots. One paragr
 
 1. **Atlas formulates his take first** — one paragraph, what you'd do and why, and what you're uncertain about
 2. **Send the problem to Hermes** — same problem statement, no anchoring with Atlas's take
-3. **Wait up to 60 seconds** for Hermes to respond
+3. **Wait up to 120 seconds** for Hermes to respond via direct API
 4. **Present both takes side-by-side** to Iris — no voting, no averaging, Iris decides
 
 ## How to run it
@@ -34,14 +34,16 @@ Before contacting Hermes, write your own paragraph:
 **Atlas:** [One paragraph: what I'd do, the key tradeoff I see, and what I'm most uncertain about.]
 ```
 
-**Step 2 — Send to Hermes:**
+**Step 2 — Send to Hermes via direct API:**
+
+Use the 35B model directly — faster and more reliable than `hermes --cli` (1s vs 90s):
 
 ```bash
-timeout 60 hermes -z "DUAL-THINK REQUEST from Atlas:
-
-Problem: [concise self-contained problem statement — do not include Atlas's take]
-
-Respond with ONE paragraph: your recommendation, the key tradeoff you see, and what you'd flag as a blind spot. Be direct, disagree with the obvious answer if you have reason to." --cli 2>&1
+rtk proxy curl -s --max-time 120 http://127.0.0.1:8081/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer local" \
+  -d "{\"model\":\"/Users/iris/.mlx/models/Qwen3.6-35B-A3B-OptiQ-4bit\",\"messages\":[{\"role\":\"user\",\"content\":\"DUAL-THINK REQUEST from Atlas:\\n\\nProblem: [concise self-contained problem statement — do not include Atlas's take]\\n\\nRespond with ONE paragraph starting with **Hermes:** — your recommendation, the key tradeoff you see, and what you would flag as a blind spot. Be direct, disagree with the obvious answer if you have reason to.\"}],\"max_tokens\":400,\"temperature\":0.6}" 2>&1 \
+  | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d['choices'][0]['message'].get('content','NO CONTENT'))"
 ```
 
 If the command times out or errors, note it and proceed with Atlas's take alone.
@@ -61,7 +63,7 @@ If the command times out or errors, note it and proceed with Atlas's take alone.
 ## Key constraints
 
 - One paragraph max per model. If it can't fit in a paragraph, decompose the problem first.
-- 60-second hard timeout on Hermes. Never block on it.
+- 120-second hard timeout on Hermes API call. Never block on it.
 - No synthesis, no voting, no "we both agree." Present the views, Iris chooses.
 - Send the raw problem to Hermes — don't prime it with Atlas's view.
 - Hermes's disagreement is valuable. Don't smooth it over.
