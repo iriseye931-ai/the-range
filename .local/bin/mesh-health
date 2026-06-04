@@ -40,7 +40,6 @@ else
 fi
 check_svc "MLX 35B (8081)     " "http://127.0.0.1:8081/v1/models"
 check_svc "MLX 9B  (8083)     " "http://127.0.0.1:8083/v1/models"
-check_svc "AI Maestro (23000) " "http://127.0.0.1:23000/api/agents"
 check_svc "Screenpipe (3030)  " "http://127.0.0.1:3030/health"
 check_svc "Ollama (11434)     " "http://127.0.0.1:11434/api/tags"
 
