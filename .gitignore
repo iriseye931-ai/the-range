@@ -6,7 +6,7 @@ config/ov.conf
 .worktrees/
 
 # Private runtime data — never commit
-.openviking/
+.openviking/data/
 .hermes/
 .mesh/
 .claude/
