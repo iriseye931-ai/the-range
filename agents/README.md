@@ -21,11 +21,11 @@ Environment variables:
 ## swarm_mesh.py
 
 Three-agent mesh using [Swarm](https://github.com/openai/swarm):
-- **Atlas** — lead, routes tasks
+- **Claude** — lead, routes tasks
 - **Researcher** — analysis and research
 - **Coder** — code tasks
 
-Agents hand off to each other. Atlas synthesizes the final answer.
+Agents hand off to each other. Claude synthesizes the final answer.
 
 ```bash
 pip install Swarm  # capital S

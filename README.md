@@ -4,7 +4,7 @@
 
 In rocketry, *the range* is the whole installation: pads, tracking, telemetry, crew. The hardened building where launch control sits is the *blockhouse*. This repo is the range; **[Blockhouse](https://github.com/iriseye931-ai/blockhouse)** is the control room.
 
-![Atlas](https://img.shields.io/badge/Atlas-Claude_Code_lead-8f5cff?style=flat-square) ![Hermes](https://img.shields.io/badge/Hermes-NousResearch-f0a821?style=flat-square) ![Local LLM](https://img.shields.io/badge/MLX-Qwen3.6_35B_%2B_Qwen3.5_9B-10b981?style=flat-square) ![Protocol](https://img.shields.io/badge/Protocol-MCP_%7C_CLI_%7C_AMP-6366f1?style=flat-square) ![Platform](https://img.shields.io/badge/Platform-Apple_Silicon-000000?style=flat-square&logo=apple&logoColor=white) ![License](https://img.shields.io/badge/License-MIT-334155?style=flat-square)
+![Claude](https://img.shields.io/badge/Claude-Claude_Code_lead-8f5cff?style=flat-square) ![Hermes](https://img.shields.io/badge/Hermes-NousResearch-f0a821?style=flat-square) ![Local LLM](https://img.shields.io/badge/MLX-Qwen3.6_35B_%2B_Qwen3.5_9B-10b981?style=flat-square) ![Protocol](https://img.shields.io/badge/Protocol-MCP_%7C_CLI_%7C_AMP-6366f1?style=flat-square) ![Platform](https://img.shields.io/badge/Platform-Apple_Silicon-000000?style=flat-square&logo=apple&logoColor=white) ![License](https://img.shields.io/badge/License-MIT-334155?style=flat-square)
 
 > Most local AI setups are either one smart premium model or one isolated local model.
 > The Range is both: a local-first mesh where Hermes absorbs the volume, Blockhouse
@@ -16,9 +16,9 @@ In rocketry, *the range* is the whole installation: pads, tracking, telemetry, c
 
 Two agents. That's deliberate — every agent added to a mesh multiplies coordination overhead, and two well-equipped agents with clear lanes beat five vague ones.
 
-**Atlas** — the premium lead, served by [Claude Code](https://claude.ai/code). Planning, architecture, high-stakes debugging, final review. Full memory tools over MCP, a code knowledge graph, and hooks that stream every action to the dashboard.
+**Claude** — the premium lead, served by [Claude Code](https://claude.ai/code). Planning, architecture, high-stakes debugging, final review. Full memory tools over MCP, a code knowledge graph, and hooks that stream every action to the dashboard.
 
-**[Hermes](https://github.com/NousResearch/hermes-agent)** (@NousResearch) — the local runner. Cron jobs, summaries, memory consolidation, repo scans, background tasks, and a kanban board that Atlas (or the dashboard) can queue real work onto. Backed by two MLX profiles:
+**[Hermes](https://github.com/NousResearch/hermes-agent)** (@NousResearch) — the local runner. Cron jobs, summaries, memory consolidation, repo scans, background tasks, and a kanban board that Claude (or the dashboard) can queue real work onto. Backed by two MLX profiles:
 
 - `workhorse` — `Qwen3.6-35B-A3B-OptiQ-4bit` (MoE) on `:8081`
 - `sidecar` — `Qwen3.5-9B-OptiQ-4bit` on `:8083` for summaries, routing, compression
@@ -27,8 +27,8 @@ Two agents. That's deliberate — every agent added to a mesh multiplies coordin
 
 ```
 routine  -> hermes            (cron, summaries, scans, execution volume)
-premium  -> atlas             (planning, ambiguous debugging, review)
-fallback -> atlas ⇄ hermes    (each covers the other)
+premium  -> claude             (planning, ambiguous debugging, review)
+fallback -> claude ⇄ hermes    (each covers the other)
 ```
 
 The constraint that matters isn't "use the smartest model first." It's **use the cheapest model that does the job correctly, and make premium usage explicit and justified.**
@@ -41,7 +41,7 @@ Three protocols, one shared memory, one source of operational truth:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                Atlas (premium lead — Claude Code)           │
+│                Claude (premium lead — Claude Code)           │
 │                                                             │
 │  MCP (inline tools)              AMP / CLI (delegation)     │
 │  ├── memory_recall/store :2033   ├── amp-send → hermes      │
@@ -162,7 +162,7 @@ Hermes's gateway runs as a launchd service (no HTTP port in cron-only mode — h
 Sessions, logs, and memories are collected nightly and indexed into a knowledge graph:
 
 ```
-Atlas sessions ───┐
+Claude sessions ───┐
 Hermes logs ──────┼──► graphrag-producer.py (2am) ──► GraphRAG index (rate-limited via llm-proxy)
 OpenViking memory ┘
 ```

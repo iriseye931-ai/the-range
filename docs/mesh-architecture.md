@@ -19,11 +19,11 @@ That means:
 | Hermes sidecar | summaries, routing, compression, cheap helper work |
 | Hermes code-specialist | code-heavy implementation and local review |
 | Hermes reasoning-specialist | harder local reasoning and second-pass debugging |
-| Atlas premium pool | planning, ambiguous debugging, tricky refactors, final review |
+| Claude premium pool | planning, ambiguous debugging, tricky refactors, final review |
 
 The premium path is a role, not a single provider:
 
-- `atlas` = active premium lead role
+- `claude` = active premium lead role
 - `claude` = premium backup when available
 
 Mission Control enforces the policy:
@@ -31,7 +31,7 @@ Mission Control enforces the policy:
 ```text
 routine      -> hermes
 specialized  -> iriseye
-premium      -> atlas (fallback: claude)
+premium      -> claude (fallback: hermes)
 ```
 
 This is why the routing pattern matters. It is not just about speed. It is what stops
@@ -92,7 +92,7 @@ That separation matters because it removes duplicate control planes. When someth
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│                 Atlas (premium lead role)                 │
+│                 Claude (premium lead role)                 │
 │            served by Codex or Claude Code                 │
 │                                                            │
 │  MCP (inline tools)          AMP / CLI (agent calls)      │
@@ -159,7 +159,7 @@ That is why the mesh uses layered escalation:
 
 1. Hermes sidecar or workhorse
 2. Hermes specialist profile if justified
-3. Atlas premium pool only when the task genuinely needs it
+3. Claude premium pool only when the task genuinely needs it
 
 ---
 

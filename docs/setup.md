@@ -3,7 +3,7 @@
 This is the current local-first iriseye setup:
 
 - `Hermes` is the workhorse
-- `Atlas` is the premium lead role
+- `Claude` is the premium lead role
 - `Mission Control` is the operational truth
 - `OpenViking` is shared memory
 - `AI Maestro` is optional registry / AMP routing
@@ -126,7 +126,7 @@ Use that instead of raw `uvicorn main:app` so the working directory is always co
 claude mcp add --transport http --scope user openviking-memory http://127.0.0.1:2033/mcp
 ```
 
-This gives Atlas memory tools:
+This gives Claude memory tools:
 
 - `memory_recall`
 - `memory_store`
@@ -241,7 +241,7 @@ Mission Control enforces this:
 ```text
 routine      -> hermes
 specialized  -> iriseye
-premium      -> atlas (fallback: claude)
+premium      -> claude (fallback: hermes)
 ```
 
 Within Hermes:

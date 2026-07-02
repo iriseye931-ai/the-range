@@ -5,7 +5,7 @@
 ## Architecture
 
 - Premium-by-exception routing is the core rule.
-- The mesh is exactly **two agents**: `Atlas` (premium lead, Claude Code) and `Hermes` (local runner on MLX). Retired agents (iriseye, claude-backup, AI Maestro registry) must not reappear in docs.
+- The mesh is exactly **two agents**: `Claude` (premium lead, Claude Code) and `Hermes` (local runner on MLX). Retired agents (iriseye, claude-backup, AI Maestro registry) must not reappear in docs.
 - `OpenViking` is the shared long-term memory layer; `codebase-memory-mcp` is the per-repo code graph; Hermes session search covers conversation recovery. Keep the three distinct.
 - `Blockhouse` is the operator surface and the source of operational truth. Its crew stage renders only real events (Claude Code hooks, Hermes log tail, AMP messages).
 
