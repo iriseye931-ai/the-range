@@ -27,7 +27,7 @@ from rank_bm25 import BM25Okapi
 
 # ── Config ────────────────────────────────────────────────────────────────────
 OV_BASE    = os.getenv("OV_BASE_URL", "http://localhost:1933")
-OV_API_KEY = os.getenv("OV_API_KEY", "REDACTED-ROTATED-KEY")
+OV_API_KEY = os.getenv("OV_API_KEY", "YOUR-OPENVIKING-KEY")
 OV_ACCOUNT = os.getenv("OV_ACCOUNT", "teamirs")
 OV_USER    = os.getenv("OV_USER", "iris")
 OV_DATA    = Path(os.getenv("OV_DATA", str(Path.home() / ".openviking/data/viking")))
