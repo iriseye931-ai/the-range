@@ -4,3 +4,11 @@ config/ov.conf
 # OS
 .DS_Store
 .worktrees/
+
+# Private runtime data — never commit
+.openviking/
+.hermes/
+.mesh/
+.claude/
+CLAUDE.md
+*.env
