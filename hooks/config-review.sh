@@ -61,7 +61,7 @@ import json, sys, urllib.request
 from datetime import datetime
 
 file_path, change, log = sys.argv[1], sys.argv[2], sys.argv[3]
-mlx_url = "http://192.168.1.186:8081/v1/chat/completions"
+mlx_url = "http://127.0.0.1:8081/v1/chat/completions"
 date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 prompt = f"""You are Hermes, reviewing a config change made by Atlas (Claude Code).
@@ -84,7 +84,7 @@ Respond with:
 - If OK: one line confirming it looks clean"""
 
 payload = json.dumps({
-    "model": "/Users/iris/.mlx/models/Qwen3.5-35B-A3B-4bit",
+    "model": "/Users/iris/.mlx/models/Qwen3.6-35B-A3B-OptiQ-4bit",
     "messages": [{"role": "user", "content": prompt}],
     "max_tokens": 300,
     "temperature": 0.1,

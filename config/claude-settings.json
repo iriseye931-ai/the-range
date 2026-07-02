@@ -1,9 +1,5 @@
 {
-  "autoDreamEnabled": false,
-  "statusLine": {
-    "type": "command",
-    "command": "bash -c 'exec /opt/homebrew/bin/node /Users/iris/Projects/claude-hud/dist/index.js'"
-  },
+  "model": "claude-fable-5",
   "hooks": {
     "PostToolUse": [
       {
@@ -11,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/iris/.claude/hooks/observe.sh",
+            "command": "~/.claude/hooks/observe.sh",
             "timeout": 4
           }
         ]
@@ -21,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/iris/.claude/hooks/config-review.sh",
+            "command": "~/.claude/hooks/config-review.sh",
             "timeout": 6
           }
         ]
@@ -29,12 +25,32 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/rtk-rewrite.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/iris/.claude/hooks/pre-write-scan.sh",
+            "command": "~/.claude/hooks/pre-write-scan.sh",
             "timeout": 8
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -m 2 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8000/api/crew/hook >/dev/null 2>&1 || true",
+            "timeout": 3,
+            "async": true
           }
         ]
       }
@@ -45,8 +61,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
-            "timeout": 5
+            "command": "curl -s -m 2 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8000/api/crew/hook >/dev/null 2>&1 || true",
+            "timeout": 3,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -m 2 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8000/api/crew/hook >/dev/null 2>&1 || true",
+            "timeout": 3,
+            "async": true
           }
         ]
       }
@@ -56,13 +85,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
+            "command": "~/.claude/hooks/auto-store.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "/Users/iris/.claude/hooks/auto-store.sh",
-            "timeout": 5
+            "command": "curl -s -m 2 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8000/api/crew/hook >/dev/null 2>&1 || true",
+            "timeout": 3,
+            "async": true
           }
         ]
       }
@@ -72,16 +102,23 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node /Users/iris/ai-maestro/scripts/claude-hooks/ai-maestro-hook.cjs",
-            "timeout": 5
+            "command": "CLAUDE_PLUGIN_ROOT=~/superpowers ~/superpowers/hooks/session-start",
+            "timeout": 10
           },
           {
             "type": "command",
-            "command": "CLAUDE_PLUGIN_ROOT=/Users/iris/superpowers /Users/iris/superpowers/hooks/session-start",
-            "timeout": 10
+            "command": "curl -s -m 2 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8000/api/crew/hook >/dev/null 2>&1 || true",
+            "timeout": 3,
+            "async": true
           }
         ]
       }
     ]
-  }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash -c 'exec /opt/homebrew/bin/node ~/Projects/claude-hud/dist/index.js'"
+  },
+  "tui": "fullscreen",
+  "autoDreamEnabled": false
 }
